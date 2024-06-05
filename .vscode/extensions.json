@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "mkhl.direnv",
+    "jnoortheen.nix-ide",
+    "rust-lang.rust-analyzer",
+    "wokwi.wokwi-vscode"
+  ]
+}

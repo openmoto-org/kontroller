@@ -1,0 +1,19 @@
+{
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "files.associations": {
+    "*.Makefile": "makefile"
+  },
+  "rust-analyzer.check.command": "clippy",
+  "nix.serverPath": "nil",
+  "nix.enableLanguageServer": true,
+  "nix.serverSettings": {
+    "nil": {
+      "formatting": {
+        "command": ["nixpkgs-fmt"]
+      }
+    }
+  }
+}
