@@ -30,6 +30,12 @@ pub enum DirectionalPadKey {
     Right,
 }
 
+impl From<DirectionalPadKey> for KeyType {
+    fn from(value: DirectionalPadKey) -> Self {
+        Self::DirectionalPad(value)
+    }
+}
+
 /// Represents the layout of the Controller.
 pub struct Layout<'d> {
     keys: HashMap<KeyType, Key<'d>>,
