@@ -35,7 +35,37 @@
       "left": 23.2,
       "rotate": 90,
       "attrs": { "color": "green", "key": "ArrowDown" }
-    }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn-enter",
+      "top": -70.6,
+      "left": 230.4,
+      "attrs": { "color": "black", "key": "Enter" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn-fn",
+      "top": -13,
+      "left": 230.4,
+      "attrs": { "color": "white", "key": "Backspace" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -147.6,
+      "left": 129,
+      "attrs": { "color": "red", "flip": "1" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -72,
+      "left": 114.65,
+      "rotate": 90,
+      "attrs": { "value": "270" }
+    },
+    { "type": "wokwi-slide-switch", "id": "sw1", "top": -139.6, "left": 79.9, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -47,10 +77,18 @@
     [ "esp:GND.1", "dpad-up:2.l", "black", [ "v0", "h-124.8" ] ],
     [ "esp:GND.1", "dpad-left:1.r", "black", [ "v0", "h-96" ] ],
     [ "esp:GND.1", "dpad-right:1.r", "black", [ "v0", "h-67.2" ] ],
-    [ "esp:GND.1", "dpad-down:1.r", "black", [ "v0", "h-38.4" ] ]
+    [ "esp:GND.1", "dpad-down:1.r", "black", [ "v0", "h-38.4" ] ],
+    [ "r1:1", "led1:A", "green", [ "h0" ] ],
+    [ "esp:5", "btn-fn:2.r", "green", [ "v0", "h122.38" ] ],
+    [ "btn-enter:2.r", "esp:4", "green", [ "h29", "v144.2" ] ],
+    [ "esp:GND.6", "btn-fn:1.r", "black", [ "v0", "h131.98", "v-153.6" ] ],
+    [ "esp:GND.6", "btn-enter:1.r", "black", [ "v0", "h160.78", "v-211.2" ] ],
+    [ "r1:2", "esp:6", "green", [ "v8.4", "h67.2", "v124.8" ] ],
+    [ "sw1:2", "esp:7", "green", [ "v96", "h105.7", "v96" ] ],
+    [ "sw1:1", "sw1:2", "green", [ "v19.2", "h9.6" ] ],
+    [ "esp:GND.10", "sw1:3", "black", [ "h7.18", "v-38.4", "h-76.8" ] ],
+    [ "esp:GND.10", "led1:C", "black", [ "h16.78", "v-57.6", "h-38.4" ] ]
   ],
-  "serialMonitor": {
-    "display": "auto",
-    "convertEol": true
-  }
+  "serialMonitor": { "display": "auto", "convertEol": true },
+  "dependencies": {}
 }

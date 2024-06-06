@@ -1871,18 +1871,18 @@
 		(uuid "09697efc-dbf3-4339-9595-1086bb35f617")
 	)
 	(label "BTN_FN"
-		(at 163.83 107.95 0)
+		(at 128.27 113.03 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "16a378a2-8841-4943-86a7-7054ba94f4d0")
 	)
 	(label "LED_PWR"
-		(at 163.83 102.87 0)
+		(at 163.83 113.03 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -2003,13 +2003,13 @@
 		(uuid "b5f22165-0cea-4781-973a-07925d19205a")
 	)
 	(label "BTN_ENTER"
-		(at 163.83 105.41 0)
+		(at 128.27 110.49 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "bf6c6b74-213f-4948-8e02-43796590a6b1")
 	)
