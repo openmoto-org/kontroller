@@ -1,5 +1,4 @@
 [wokwi]
 version = 1
-gdbServerPort = 3333
-elf = "target/riscv32imc-esp-espidf/debug/firmware"
-firmware = "target/riscv32imc-esp-espidf/debug/firmware"
+firmware = "../target/riscv32imc-esp-espidf/release/firmware"
+elf = "../target/riscv32imc-esp-espidf/release/firmware"

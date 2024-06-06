@@ -46,14 +46,10 @@
               rustToolchain
               cargo-generate
               cargo-espflash
+              ldproxy
 
-              esp-idf-esp32c3
-            ];
-
-            shellHook = ''
-              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.libxml2 pkgs.zlib pkgs.stdenv.cc.cc.lib ]}"
-              export LIBCLANG_PATH=${pkgs.libclang.lib}/lib
-            '';
+              # esp-idf-esp32c3
+            ] ++ lib.optional stdenv.isDarwin [ libiconv ];
           };
         }
       );

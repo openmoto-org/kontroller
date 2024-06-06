@@ -1,34 +1,56 @@
 {
-    "version": 1,
-    "editor": "wokwi",
-    "author": "Danilo Cianfrone <danilocianfr@gmail.com>",
-    "parts": [
-        {
-            "type": "board-esp32-c3-devkitm-1",
-            "id": "esp",
-            "top": 0.59,
-            "left": 0.67,
-            "attrs": {
-                "flashSize": "16"
-            }
-        }
-    ],
-    "connections": [
-        [
-            "esp:TX",
-            "$serialMonitor:RX",
-            "",
-            []
-        ],
-        [
-            "esp:RX",
-            "$serialMonitor:TX",
-            "",
-            []
-        ]
-    ],
-    "serialMonitor": {
-        "display": "terminal",
-        "convertEol": true
+  "version": 1,
+  "author": "Danilo Cianfrone <danilocianfr@gmail.com>",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": -0.3, "left": 82.62, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton-6mm",
+      "id": "dpad-up",
+      "top": -75,
+      "left": -60.8,
+      "rotate": 270,
+      "attrs": { "color": "green", "key": "ArrowUp" }
+    },
+    {
+      "type": "wokwi-pushbutton-6mm",
+      "id": "dpad-left",
+      "top": -75.8,
+      "left": -34.4,
+      "rotate": 90,
+      "attrs": { "color": "green", "key": "ArrowLeft" }
+    },
+    {
+      "type": "wokwi-pushbutton-6mm",
+      "id": "dpad-right",
+      "top": -75.8,
+      "left": -5.6,
+      "rotate": 90,
+      "attrs": { "color": "green", "key": "ArrowRight" }
+    },
+    {
+      "type": "wokwi-pushbutton-6mm",
+      "id": "dpad-down",
+      "top": -75.8,
+      "left": 23.2,
+      "rotate": 90,
+      "attrs": { "color": "green", "key": "ArrowDown" }
     }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "dpad-up:1.l", "esp:0", "green", [ "v0" ] ],
+    [ "dpad-left:2.r", "esp:1", "green", [ "v154.4", "h18.8" ] ],
+    [ "dpad-right:2.r", "esp:2", "green", [ "v0" ] ],
+    [ "dpad-down:2.r", "esp:3", "green", [ "v0" ] ],
+    [ "esp:GND.1", "dpad-up:2.l", "black", [ "v0", "h-124.8" ] ],
+    [ "esp:GND.1", "dpad-left:1.r", "black", [ "v0", "h-96" ] ],
+    [ "esp:GND.1", "dpad-right:1.r", "black", [ "v0", "h-67.2" ] ],
+    [ "esp:GND.1", "dpad-down:1.r", "black", [ "v0", "h-38.4" ] ]
+  ],
+  "serialMonitor": {
+    "display": "auto",
+    "convertEol": true
+  }
 }

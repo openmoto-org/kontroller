@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["firmware"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_qualifications = "deny"
+trivial_casts = "deny"
+missing_docs = "deny"
+
+[workspace.lints.clippy]
+cargo = "warn"
+all = "deny"
+pedantic = "deny"
+
+[profile.dev.package."firmware"]
+debug = true    # Symbols are nice and they don't increase the size on Flash
+opt-level = "z"
+
+[profile.release.package."firmware"]
+opt-level = "s"

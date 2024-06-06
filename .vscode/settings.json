@@ -4,9 +4,13 @@
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
   "files.associations": {
-    "*.Makefile": "makefile"
+    "*.Makefile": "makefile",
+  },
+  "[json|jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.allTargets": false,
   "nix.serverPath": "nil",
   "nix.enableLanguageServer": true,
   "nix.serverSettings": {

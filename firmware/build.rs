@@ -1,5 +1,4 @@
-#![no_std]
-#![no_main]
+//! Build configuration for firmware.
 
 fn main() {
     embuild::espidf::sysenv::output();
