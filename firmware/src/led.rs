@@ -67,10 +67,14 @@ impl<'d> Deref for Driver<'d> {
 
 impl<'d> Driver<'d> {
     pub fn new(led: Led<'d>, timer: EspAsyncTimer) -> Self {
+        Self::new_with_config(led, timer, DriverConfig::default())
+    }
+
+    pub fn new_with_config(led: Led<'d>, timer: EspAsyncTimer, config: DriverConfig) -> Self {
         Self {
             led,
+            config,
             timer: Mutex::new(timer),
-            config: DriverConfig::default(),
         }
     }
 

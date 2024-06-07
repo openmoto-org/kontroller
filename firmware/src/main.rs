@@ -1,7 +1,5 @@
 //! ESP32-based firmware to power an openmoto `kontroller`.
 
-#![feature(array_try_map)]
-
 use std::time::{Duration, Instant};
 
 use esp_idf_svc::{
@@ -10,11 +8,10 @@ use esp_idf_svc::{
     timer::EspTaskTimerService,
 };
 
+pub mod input;
 pub mod key;
-pub mod layout;
 mod led;
 
-use layout::{DirectionalPadKey, KeyType, Layout};
 use led::Led;
 
 fn main() -> anyhow::Result<()> {
@@ -31,25 +28,25 @@ fn main() -> anyhow::Result<()> {
     let timer_svc = EspTaskTimerService::new()?;
 
     let led_driver = led::Driver::new(Led::new(peripherals.pins.gpio6)?, timer_svc.timer_async()?);
-    let layout = Layout::build([
+    let input_device = input::Device::new([
         (
-            DirectionalPadKey::Up.into(),
+            input::DirectionalPad::Up.into(),
             peripherals.pins.gpio0.downgrade(),
         ),
         (
-            DirectionalPadKey::Left.into(),
+            input::DirectionalPad::Left.into(),
             peripherals.pins.gpio1.downgrade(),
         ),
         (
-            DirectionalPadKey::Right.into(),
+            input::DirectionalPad::Right.into(),
             peripherals.pins.gpio2.downgrade(),
         ),
         (
-            DirectionalPadKey::Down.into(),
+            input::DirectionalPad::Down.into(),
             peripherals.pins.gpio3.downgrade(),
         ),
-        (KeyType::Enter, peripherals.pins.gpio4.downgrade()),
-        (KeyType::Function, peripherals.pins.gpio5.downgrade()),
+        (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
+        (input::Key::Function, peripherals.pins.gpio5.downgrade()),
     ])?;
 
     log::debug!("Peripherals fully initialized");
@@ -57,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     task::block_on(async {
         futures::try_join!(
             led_driver.long_blink_every(Duration::from_millis(300)),
-            keys_driver(layout, &led_driver, &timer_svc),
+            keys_driver(input_device, &led_driver, &timer_svc),
         )
     })?;
 
@@ -65,7 +62,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 async fn keys_driver(
-    mut layout: Layout<'_>,
+    mut input_device: input::Device<'_>,
     led_driver: &led::Driver<'_>,
     timer_svc: &EspTaskTimerService,
 ) -> Result<(), EspError> {
@@ -75,7 +72,7 @@ async fn keys_driver(
         async_timer.after(Duration::from_micros(500)).await?;
 
         let now = Instant::now();
-        for (kt, event) in layout.report(now) {
+        for (kt, event) in input_device.report(now) {
             match event {
                 None => (),
                 Some(key::Event::Up) => {

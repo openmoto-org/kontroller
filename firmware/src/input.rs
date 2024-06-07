@@ -4,13 +4,13 @@ use std::{collections::HashMap, time::Instant};
 
 use esp_idf_svc::{hal::gpio::AnyIOPin, sys::EspError};
 
-use crate::key::{self, Key};
+use crate::key::{self, Key as HwKey};
 
 /// The type of a single key in the Layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum KeyType {
+pub enum Key {
     /// A directional pad key.
-    DirectionalPad(DirectionalPadKey),
+    DirectionalPad(DirectionalPad),
     /// The enter key.
     Enter,
     /// The function key.
@@ -19,7 +19,7 @@ pub enum KeyType {
 
 /// All possible types of Directional Pad keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DirectionalPadKey {
+pub enum DirectionalPad {
     /// Arrow up.
     Up,
     /// Arrow down.
@@ -30,34 +30,34 @@ pub enum DirectionalPadKey {
     Right,
 }
 
-impl From<DirectionalPadKey> for KeyType {
-    fn from(value: DirectionalPadKey) -> Self {
+impl From<DirectionalPad> for Key {
+    fn from(value: DirectionalPad) -> Self {
         Self::DirectionalPad(value)
     }
 }
 
 /// Represents the layout of the Controller.
-pub struct Layout<'d> {
-    keys: HashMap<KeyType, Key<'d>>,
+pub struct Device<'d> {
+    keys: HashMap<Key, HwKey<'d>>,
 }
 
-impl<'d> Layout<'d> {
+impl<'d> Device<'d> {
     /// TODO
     ///
     /// # Errors
-    pub fn build(
-        keys: impl IntoIterator<Item = (KeyType, impl Into<AnyIOPin>)>,
+    pub fn new(
+        keys: impl IntoIterator<Item = (Key, impl Into<AnyIOPin>)>,
     ) -> Result<Self, EspError> {
         Ok(Self {
             keys: keys
                 .into_iter()
-                .map(|(key_type, pin)| Ok((key_type, Key::try_from(pin)?)))
-                .collect::<Result<HashMap<KeyType, Key<'d>>, EspError>>()?,
+                .map(|(key_type, pin)| Ok((key_type, HwKey::try_from(pin)?)))
+                .collect::<Result<HashMap<Key, HwKey<'d>>, EspError>>()?,
         })
     }
 
     /// TODO
-    pub fn report(&mut self, now: Instant) -> HashMap<KeyType, Option<key::Event>> {
+    pub fn report(&mut self, now: Instant) -> HashMap<Key, Option<key::Event>> {
         self.keys
             .iter_mut()
             .map(|(kt, key)| (*kt, key.update(now)))
