@@ -1,4 +1,4 @@
 [wokwi]
 version = 1
-firmware = "target/riscv32imc-esp-espidf/release/firmware"
-elf = "target/riscv32imc-esp-espidf/release/firmware"
+firmware = "target/xtensa-esp32s3-espidf/release/firmware"
+elf = "target/xtensa-esp32s3-espidf/release/firmware"

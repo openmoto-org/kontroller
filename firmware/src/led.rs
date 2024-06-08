@@ -51,13 +51,13 @@ impl Default for DriverConfig {
     }
 }
 
-pub struct Driver<'d> {
+pub struct Blinker<'d> {
     led: Led<'d>,
     timer: Mutex<EspAsyncTimer>,
     config: DriverConfig,
 }
 
-impl<'d> Deref for Driver<'d> {
+impl<'d> Deref for Blinker<'d> {
     type Target = Led<'d>;
 
     fn deref(&self) -> &Self::Target {
@@ -65,7 +65,7 @@ impl<'d> Deref for Driver<'d> {
     }
 }
 
-impl<'d> Driver<'d> {
+impl<'d> Blinker<'d> {
     pub fn new(led: Led<'d>, timer: EspAsyncTimer) -> Self {
         Self::new_with_config(led, timer, DriverConfig::default())
     }
@@ -75,20 +75,6 @@ impl<'d> Driver<'d> {
             led,
             config,
             timer: Mutex::new(timer),
-        }
-    }
-
-    pub async fn short_blink_every(&self, d: Duration) -> Result<(), EspError> {
-        loop {
-            self.short_blink().await?;
-            self.timer.lock().await.after(d).await?;
-        }
-    }
-
-    pub async fn long_blink_every(&self, d: Duration) -> Result<(), EspError> {
-        loop {
-            self.long_blink().await?;
-            self.timer.lock().await.after(d).await?;
         }
     }
 

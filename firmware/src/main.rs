@@ -2,9 +2,7 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
-use std::time::Duration;
-
-use esp32_nimble::{BLEAdvertisementData, BLEDevice, BLEHIDDevice};
+use esp32_nimble::BLEDevice;
 use esp_idf_svc::{
     hal::{gpio::IOPin, peripherals::Peripherals, task},
     timer::EspTaskTimerService,
@@ -12,8 +10,10 @@ use esp_idf_svc::{
 
 pub mod input;
 pub mod key;
+mod kontroller;
 mod led;
 
+use kontroller::Kontroller;
 use led::Led;
 
 fn main() -> anyhow::Result<()> {
@@ -30,52 +30,42 @@ fn main() -> anyhow::Result<()> {
     let timer_svc = EspTaskTimerService::new()?;
     let ble_device = BLEDevice::take();
 
-    let ble_server = ble_device.get_server();
-    let ble_hid = BLEHIDDevice::new(ble_server);
+    let led_blinker =
+        led::Blinker::new(Led::new(peripherals.pins.gpio6)?, timer_svc.timer_async()?);
 
-    let ble_advertising = ble_device.get_advertising();
-    ble_advertising.lock().scan_response(false).set_data(
-        BLEAdvertisementData::new()
-            .name("ESP32 Keyboard")
-            .appearance(0x03C1)
-            .add_service_uuid(ble_hid.hid_service().lock().uuid()),
-    )?;
-    ble_advertising.lock().start()?;
+    let input_reporter = input::Reporter::new([
+        (
+            input::DirectionalPad::Up.into(),
+            peripherals.pins.gpio0.downgrade(),
+        ),
+        (
+            input::DirectionalPad::Left.into(),
+            peripherals.pins.gpio1.downgrade(),
+        ),
+        (
+            input::DirectionalPad::Right.into(),
+            peripherals.pins.gpio2.downgrade(),
+        ),
+        (
+            input::DirectionalPad::Down.into(),
+            peripherals.pins.gpio3.downgrade(),
+        ),
+        (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
+        (input::Key::Function, peripherals.pins.gpio5.downgrade()),
+    ])?;
 
-    let led_driver = led::Driver::new(Led::new(peripherals.pins.gpio6)?, timer_svc.timer_async()?);
-    let input_device = input::Device::new(
-        ble_hid,
-        timer_svc.timer_async()?,
-        [
-            (
-                input::DirectionalPad::Up.into(),
-                peripherals.pins.gpio0.downgrade(),
-            ),
-            (
-                input::DirectionalPad::Left.into(),
-                peripherals.pins.gpio1.downgrade(),
-            ),
-            (
-                input::DirectionalPad::Right.into(),
-                peripherals.pins.gpio2.downgrade(),
-            ),
-            (
-                input::DirectionalPad::Down.into(),
-                peripherals.pins.gpio3.downgrade(),
-            ),
-            (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
-            (input::Key::Function, peripherals.pins.gpio5.downgrade()),
-        ],
-    )?;
+    let kontroller = Kontroller::new(
+        timer_svc,
+        kontroller::Subsystems {
+            ble_device,
+            led_blinker,
+            input_reporter,
+        },
+    );
 
     log::debug!("Peripherals fully initialized");
 
-    task::block_on(async {
-        futures::try_join!(
-            led_driver.long_blink_every(Duration::from_millis(300)),
-            input_device.start()
-        )
-    })?;
+    task::block_on(kontroller.start())?;
 
     Ok(())
 }
