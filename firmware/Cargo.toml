@@ -22,8 +22,8 @@ trivial_casts = "deny"
 missing_docs = "deny"
 
 [lints.clippy]
-cargo = "warn"
 all = "deny"
+cargo = "deny"
 pedantic = "deny"
 
 [profile.dev]
@@ -34,7 +34,7 @@ opt-level = "z"
 opt-level = "s"
 
 [features]
-default = ["std", "embassy", "esp-idf-svc/native"]
+default = ["std", "embassy", "pio"]
 
 alloc = ["esp-idf-svc/alloc"]
 pio = ["esp-idf-svc/pio"]

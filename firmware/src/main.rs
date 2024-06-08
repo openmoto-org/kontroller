@@ -1,10 +1,12 @@
 //! ESP32-based firmware to power an openmoto `kontroller`.
 
-use std::time::{Duration, Instant};
+#![allow(clippy::multiple_crate_versions)]
 
+use std::time::Duration;
+
+use esp32_nimble::{BLEAdvertisementData, BLEDevice, BLEHIDDevice};
 use esp_idf_svc::{
     hal::{gpio::IOPin, peripherals::Peripherals, task},
-    sys::EspError,
     timer::EspTaskTimerService,
 };
 
@@ -26,67 +28,54 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = Peripherals::take()?;
     let timer_svc = EspTaskTimerService::new()?;
+    let ble_device = BLEDevice::take();
+
+    let ble_server = ble_device.get_server();
+    let ble_hid = BLEHIDDevice::new(ble_server);
+
+    let ble_advertising = ble_device.get_advertising();
+    ble_advertising.lock().scan_response(false).set_data(
+        BLEAdvertisementData::new()
+            .name("ESP32 Keyboard")
+            .appearance(0x03C1)
+            .add_service_uuid(ble_hid.hid_service().lock().uuid()),
+    )?;
+    ble_advertising.lock().start()?;
 
     let led_driver = led::Driver::new(Led::new(peripherals.pins.gpio6)?, timer_svc.timer_async()?);
-    let input_device = input::Device::new([
-        (
-            input::DirectionalPad::Up.into(),
-            peripherals.pins.gpio0.downgrade(),
-        ),
-        (
-            input::DirectionalPad::Left.into(),
-            peripherals.pins.gpio1.downgrade(),
-        ),
-        (
-            input::DirectionalPad::Right.into(),
-            peripherals.pins.gpio2.downgrade(),
-        ),
-        (
-            input::DirectionalPad::Down.into(),
-            peripherals.pins.gpio3.downgrade(),
-        ),
-        (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
-        (input::Key::Function, peripherals.pins.gpio5.downgrade()),
-    ])?;
+    let input_device = input::Device::new(
+        ble_hid,
+        timer_svc.timer_async()?,
+        [
+            (
+                input::DirectionalPad::Up.into(),
+                peripherals.pins.gpio0.downgrade(),
+            ),
+            (
+                input::DirectionalPad::Left.into(),
+                peripherals.pins.gpio1.downgrade(),
+            ),
+            (
+                input::DirectionalPad::Right.into(),
+                peripherals.pins.gpio2.downgrade(),
+            ),
+            (
+                input::DirectionalPad::Down.into(),
+                peripherals.pins.gpio3.downgrade(),
+            ),
+            (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
+            (input::Key::Function, peripherals.pins.gpio5.downgrade()),
+        ],
+    )?;
 
     log::debug!("Peripherals fully initialized");
 
     task::block_on(async {
         futures::try_join!(
             led_driver.long_blink_every(Duration::from_millis(300)),
-            keys_driver(input_device, &led_driver, &timer_svc),
+            input_device.start()
         )
     })?;
 
     Ok(())
-}
-
-async fn keys_driver(
-    mut input_device: input::Device<'_>,
-    led_driver: &led::Driver<'_>,
-    timer_svc: &EspTaskTimerService,
-) -> Result<(), EspError> {
-    let mut async_timer = timer_svc.timer_async()?;
-
-    loop {
-        async_timer.after(Duration::from_micros(500)).await?;
-
-        let now = Instant::now();
-        for (kt, event) in input_device.report(now) {
-            match event {
-                None => (),
-                Some(key::Event::Up) => {
-                    log::info!("key {kt:?} up");
-                    led_driver.off().await?;
-                }
-                Some(key::Event::Down) => {
-                    log::info!("key {kt:?} down");
-                    led_driver.on().await?;
-                }
-            }
-        }
-
-        let delay_us = Instant::elapsed(&now).as_micros();
-        log::debug!("Processing took {delay_us}us");
-    }
 }
