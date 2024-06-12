@@ -14,7 +14,7 @@ use esp32_nimble::{
 };
 use esp_idf_svc::timer::{EspAsyncTimer, EspTaskTimerService};
 
-use crate::{input, led};
+use crate::{input, key, led};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
@@ -70,12 +70,14 @@ impl<'d> Kontroller<'d> {
     }
 
     pub async fn start(mut self) -> anyhow::Result<()> {
+        const DEVICE_NAME: &str = "DMD2 CTL 7K";
+
         let input_reporter = &mut self.subsystems.input_reporter;
         let led_blinker = self.subsystems.led_blinker;
 
         let ble_device = self.subsystems.ble_device;
 
-        BLEDevice::set_device_name("ESP32 Keyboard")?;
+        BLEDevice::set_device_name(DEVICE_NAME)?;
 
         ble_device
             .security()
@@ -103,7 +105,7 @@ impl<'d> Kontroller<'d> {
 
         ble_advertising.lock().scan_response(true).set_data(
             BLEAdvertisementData::new()
-                .name("ESP32 Keyboard")
+                .name(DEVICE_NAME)
                 .appearance(BLE_APPEARANCE_HID_KEYBOARD)
                 .add_service_uuid(ble_uuid),
         )?;
@@ -111,9 +113,23 @@ impl<'d> Kontroller<'d> {
         // Updates the status to Status::Unpaired and drops the lock.
         *(self.status.write().unwrap()) = Status::Unpaired;
 
+        let status_on_connect = self.status.clone();
+        ble_server.on_connect(move |_, desc| {
+            log::info!("BLE client connected: {desc:?}");
+            *(status_on_connect.write().unwrap()) = Status::Paired;
+        });
+
+        let status_on_disconnect = self.status.clone();
+        ble_server.on_disconnect(move |desc, reason| {
+            let reason = reason.unwrap_err();
+            log::info!("BLE client disconnected: {desc:?}, reason: {reason}");
+            *(status_on_disconnect.write().unwrap()) = Status::Unpaired;
+        });
+
+        ble_advertising.lock().start()?;
+
         futures::try_join!(
             Self::handle_led_status(self.timer.timer_async()?, self.status.clone(), &led_blinker,),
-            Self::handle_ble_connection(self.status.clone(), ble_server, ble_advertising),
             Self::handle_input_detection(
                 self.timer.timer_async()?,
                 ble_hid_input_characteristic.clone(),
@@ -143,37 +159,10 @@ impl<'d> Kontroller<'d> {
             };
 
             match status {
-                Status::NotStarted => continue,
-                Status::Unpaired => led_blinker.short_blink().await?,
                 Status::Paired => led_blinker.long_blink().await?,
+                _ => led_blinker.short_blink().await?,
             }
         }
-    }
-
-    #[allow(clippy::unused_async)]
-    pub async fn handle_ble_connection(
-        status: Arc<RwLock<Status>>,
-        ble_server: &mut BLEServer,
-        ble_advertising: &Esp32NimbleMutex<BLEAdvertising>,
-    ) -> anyhow::Result<()> {
-        let status_on_connect = status.clone();
-        ble_server.on_connect(move |_, desc| {
-            log::info!("BLE client connected: {desc:?}");
-            *(status_on_connect.write().unwrap()) = Status::Paired;
-        });
-
-        let status_on_disconnect = status.clone();
-        ble_server.on_disconnect(move |desc, reason| {
-            let reason = reason.unwrap_err();
-            log::info!("BLE client disconnected: {desc:?}, reason: {reason}");
-            *(status_on_disconnect.write().unwrap()) = Status::Unpaired;
-        });
-
-        ble_advertising.lock().start()?;
-
-        log::info!("exiting...");
-
-        Ok(())
     }
 }
 
@@ -187,17 +176,18 @@ struct KeyReport {
 }
 
 impl KeyReport {
-    fn from_pressed_keys(keys: &[input::Key]) -> Self {
+    fn from_pressed_keys(keys: &[(input::Key, key::Event)]) -> Self {
         let mut result: [u8; 6] = Default::default();
 
-        for (i, key) in keys.iter().enumerate() {
-            result[i] = match key {
-                input::Key::DirectionalPad(input::DirectionalPad::Up) => 0xDA,
-                input::Key::DirectionalPad(input::DirectionalPad::Left) => 0xD8,
-                input::Key::DirectionalPad(input::DirectionalPad::Right) => 0xD7,
-                input::Key::DirectionalPad(input::DirectionalPad::Down) => 0xD9,
-                input::Key::Enter => 0xB0,
-                input::Key::Function => 0xC6,
+        for (i, evt) in keys.iter().enumerate() {
+            result[i] = match evt {
+                (_, key::Event::Down) => 0x00,
+                (input::Key::DirectionalPad(input::DirectionalPad::Up), _) => 0xDA,
+                (input::Key::DirectionalPad(input::DirectionalPad::Left), _) => 0xD8,
+                (input::Key::DirectionalPad(input::DirectionalPad::Right), _) => 0xD7,
+                (input::Key::DirectionalPad(input::DirectionalPad::Down), _) => 0xD9,
+                (input::Key::Enter, _) => 0xB0,
+                (input::Key::Function, _) => 0xC6,
             };
         }
 
@@ -222,18 +212,20 @@ impl<'d> Kontroller<'d> {
             timer.tick().await?;
 
             let pressed_keys = input_reporter.report_pressed_keys(Instant::now());
-            if pressed_keys.is_empty() {
-                continue;
-            }
+            // if pressed_keys.is_empty() {
+            //     continue;
+            // }
 
             let key_report = KeyReport::from_pressed_keys(&pressed_keys);
+
+            log::info!("key report: {key_report:?}");
 
             ble_hid_input_characteristic
                 .lock()
                 .set_from(&key_report)
                 .notify();
 
-            led_blinker.short_blink().await?;
+            // led_blinker.short_blink().await?;
         }
     }
 }
@@ -242,9 +234,10 @@ impl<'d> Kontroller<'d> {
 // Source: https://github.com/taks/esp32-nimble/blob/main/examples/ble_keyboard.rs
 const KEYBOARD_ID: u8 = 0x01;
 const HID_REPORT_DESCRIPTOR: &[u8] = esp32_nimble::hid::hid!(
-    (USAGE_PAGE, 0x01),       // USAGE_PAGE (Generic Desktop Ctrls)
-    (USAGE, 0x06),            // USAGE (Keyboard)
-    (COLLECTION, 0x01),       // COLLECTION (Application)
+    (USAGE_PAGE, 0x01), // USAGE_PAGE (Generic Desktop Ctrls)
+    (USAGE, 0x06),      // USAGE (Keyboard)
+    (COLLECTION, 0x01), // COLLECTION (Application)
+    // ------------------------------------------------- Keyboard
     (REPORT_ID, KEYBOARD_ID), //   REPORT_ID (1)
     (USAGE_PAGE, 0x07),       //   USAGE_PAGE (Kbrd/Keypad)
     (USAGE_MINIMUM, 0xE0),    //   USAGE_MINIMUM (0xE0)

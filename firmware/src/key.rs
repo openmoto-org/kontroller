@@ -106,11 +106,12 @@ impl<'d> Key<'d> {
     /// has detected one.
     pub fn update(&mut self, now: Instant) -> Option<Event> {
         match self.state {
-            State::Released if self.pin.is_low() => {
-                self.state = State::Down(now);
+            State::Released => {
+                if self.pin.is_low() {
+                    self.state = State::Down(now);
+                }
                 None
             }
-            State::Released => None,
             State::Down(last) => {
                 if self.pin.is_low() && self.debounced(now, last) {
                     self.state = State::Pressed(now);

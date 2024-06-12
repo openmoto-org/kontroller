@@ -31,27 +31,27 @@ fn main() -> anyhow::Result<()> {
     let ble_device = BLEDevice::take();
 
     let led_blinker =
-        led::Blinker::new(Led::new(peripherals.pins.gpio6)?, timer_svc.timer_async()?);
+        led::Blinker::new(Led::new(peripherals.pins.gpio7)?, timer_svc.timer_async()?);
 
     let input_reporter = input::Reporter::new([
         (
             input::DirectionalPad::Up.into(),
-            peripherals.pins.gpio0.downgrade(),
-        ),
-        (
-            input::DirectionalPad::Left.into(),
             peripherals.pins.gpio1.downgrade(),
         ),
         (
-            input::DirectionalPad::Right.into(),
+            input::DirectionalPad::Left.into(),
             peripherals.pins.gpio2.downgrade(),
         ),
         (
-            input::DirectionalPad::Down.into(),
+            input::DirectionalPad::Right.into(),
             peripherals.pins.gpio3.downgrade(),
         ),
-        (input::Key::Enter, peripherals.pins.gpio4.downgrade()),
-        (input::Key::Function, peripherals.pins.gpio5.downgrade()),
+        (
+            input::DirectionalPad::Down.into(),
+            peripherals.pins.gpio4.downgrade(),
+        ),
+        (input::Key::Enter, peripherals.pins.gpio5.downgrade()),
+        (input::Key::Function, peripherals.pins.gpio6.downgrade()),
     ])?;
 
     let kontroller = Kontroller::new(

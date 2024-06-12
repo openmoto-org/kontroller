@@ -1,4 +1,4 @@
-# openmoto kontroller
+# kontroller
 
 An open-source, ESP32-S3-based motorcycle navigation controller - 3D-printable and to assemble at home.
 

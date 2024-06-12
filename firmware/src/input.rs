@@ -75,12 +75,17 @@ impl<'d> Reporter<'d> {
     /// TODO
     ///
     /// # Errors
-    pub fn report_pressed_keys(&mut self, now: Instant) -> Vec<Key> {
+    ///
+    /// # Panics
+    pub fn report_pressed_keys(&mut self, now: Instant) -> Vec<(Key, key::Event)> {
         self.keys
             .iter_mut()
             .map(|(kt, key)| (kt, key.update(now)))
-            .filter(|(_, evt)| *evt == Some(key::Event::Down))
-            .map(|(kt, _)| *kt)
+            .filter(|(_, evt)| evt.is_some())
+            .map(|(kt, evt)| {
+                log::info!("{evt:?} {kt:?}");
+                (*kt, evt.unwrap())
+            })
             .collect()
     }
 }
