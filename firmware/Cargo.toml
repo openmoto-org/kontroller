@@ -40,9 +40,9 @@ alloc = ["esp-idf-svc/alloc"]
 pio = ["esp-idf-svc/pio"]
 std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]
 embassy = [
-  "esp-idf-svc/embassy-sync",
-  "esp-idf-svc/critical-section",
-  "esp-idf-svc/embassy-time-driver",
+    "esp-idf-svc/embassy-sync",
+    "esp-idf-svc/critical-section",
+    "esp-idf-svc/embassy-time-driver",
 ]
 
 [dependencies]
@@ -51,6 +51,11 @@ esp-idf-svc = { version = "0.48.1", default-features = false }
 anyhow = "1.0.86"
 futures = "0.3.30"
 esp32-nimble = "0.6.1"
+embassy-sync = { version = "0.6.0", features = ["defmt"] }
+usbd-hid = { version = "0.7.0", features = ["defmt"] }
+defmt = "0.3.8"
+ssmarshal = "1.0.0"
+num_enum = "0.7.2"
 
 [build-dependencies]
 embuild = "0.31.3"

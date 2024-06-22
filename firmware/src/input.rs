@@ -1,55 +1,38 @@
 //! Abstractions to build a controller layout.
 
-use std::{collections::HashMap, time::Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
-use esp_idf_svc::{hal::gpio::AnyIOPin, sys::EspError};
+use esp_idf_svc::{hal::gpio::AnyIOPin, sys::EspError, timer::EspAsyncTimer};
+use futures::{channel::mpsc::Sender, SinkExt};
 
-use crate::key::{self, Key as HwKey};
+use crate::{
+    hid,
+    key::{self, Key as HwKey},
+    keycode::KeyCode,
+};
 
 /// The type of a single key in the Layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Key {
-    /// A directional pad key.
-    DirectionalPad(DirectionalPad),
+    /// Up button key from the directional pad.
+    Up,
+    /// Down button key from the directional pad.
+    Down,
+    /// Left button key from the directional pad.
+    Left,
+    /// Right button key from the directional pad.
+    Right,
     /// The enter key.
     Enter,
-    /// The function key.
-    Function,
-}
-
-impl Key {
-    /// Returns the ASCII keycode for the specified input key, to be sent
-    /// to the connected host in the HID report.
-    #[must_use]
-    pub fn ascii_keycode(&self) -> u8 {
-        match *self {
-            Key::DirectionalPad(DirectionalPad::Up) => 0xDA,
-            Key::DirectionalPad(DirectionalPad::Left) => 0xD8,
-            Key::DirectionalPad(DirectionalPad::Right) => 0xD7,
-            Key::DirectionalPad(DirectionalPad::Down) => 0xD9,
-            Key::Enter => 0xB0,
-            Key::Function => 0xC6,
-        }
-    }
-}
-
-/// All possible types of Directional Pad keys.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DirectionalPad {
-    /// Arrow up.
-    Up,
-    /// Arrow down.
-    Down,
-    /// Arrow left.
-    Left,
-    /// Arrow right.
-    Right,
-}
-
-impl From<DirectionalPad> for Key {
-    fn from(value: DirectionalPad) -> Self {
-        Self::DirectionalPad(value)
-    }
+    /// The first function key.
+    Fn1,
+    /// The second function key.
+    Fn2,
+    /// The third function key.
+    Fn3,
 }
 
 /// Represents the layout of the Controller.
@@ -70,6 +53,46 @@ impl<'d> Reporter<'d> {
                 .map(|(key_type, pin)| Ok((key_type, HwKey::try_from(pin)?)))
                 .collect::<Result<HashMap<Key, HwKey<'d>>, EspError>>()?,
         })
+    }
+
+    /// # Errors
+    ///
+    pub async fn start<Clk>(
+        &mut self,
+        clock: Clk,
+        timer: &mut EspAsyncTimer,
+        mut tx: Sender<hid::Report>,
+    ) -> anyhow::Result<()>
+    where
+        Clk: Fn() -> Instant,
+    {
+        loop {
+            // TODO(ar3s3ru): inject this value through some configuration.
+            timer.after(Duration::from_micros(100)).await?;
+
+            let pressed_keys = self.report_pressed_keys(clock());
+            if pressed_keys.is_empty() {
+                continue;
+            }
+
+            let mut report = hid::Report::default();
+
+            for (i, evt) in pressed_keys.iter().enumerate() {
+                report.keycodes[i] = match evt {
+                    (_, key::Event::Up) => 0x00,
+                    (Key::Up, key::Event::Down) => KeyCode::UP as u8,
+                    (Key::Down, key::Event::Down) => KeyCode::Down as u8,
+                    (Key::Left, key::Event::Down) => KeyCode::Left as u8,
+                    (Key::Right, key::Event::Down) => KeyCode::Right as u8,
+                    (Key::Enter, key::Event::Down) => KeyCode::Enter as u8,
+                    (Key::Fn1, key::Event::Down) => KeyCode::F7 as u8,
+                    (Key::Fn2, key::Event::Down) => KeyCode::F6 as u8,
+                    (Key::Fn3, key::Event::Down) => KeyCode::F5 as u8,
+                };
+            }
+
+            tx.send(report).await?;
+        }
     }
 
     /// TODO

@@ -9,7 +9,7 @@ use esp_idf_svc::{
 
 /// Default debounce timeout used before triggering an [`Event::Down`] when the [`Key`]
 /// is pressed.
-pub const DEFAULT_DEBOUNCE_TIMEOUT: Duration = Duration::from_micros(900);
+pub const DEFAULT_DEBOUNCE_TIMEOUT: Duration = Duration::from_micros(500);
 
 /// Default release timeout before triggering an [`Event::Up`] when the [`Key`]
 /// is depressed.
