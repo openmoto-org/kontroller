@@ -11,7 +11,7 @@ use futures::{channel::mpsc::Sender, SinkExt};
 use crate::{
     hid,
     key::{self, Key as HwKey},
-    keycode::KeyCode,
+    proto::kontroller::hid::v1::KeyCode,
 };
 
 /// The type of a single key in the Layout.
@@ -80,7 +80,7 @@ impl<'d> Reporter<'d> {
             for (i, evt) in pressed_keys.iter().enumerate() {
                 report.keycodes[i] = match evt {
                     (_, key::Event::Up) => 0x00,
-                    (Key::Up, key::Event::Down) => KeyCode::UP as u8,
+                    (Key::Up, key::Event::Down) => KeyCode::Up as u8,
                     (Key::Down, key::Event::Down) => KeyCode::Down as u8,
                     (Key::Left, key::Event::Down) => KeyCode::Left as u8,
                     (Key::Right, key::Event::Down) => KeyCode::Right as u8,

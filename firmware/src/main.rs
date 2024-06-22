@@ -4,9 +4,6 @@
 
 use std::time::{Duration, Instant};
 
-use ble::Config;
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
-use esp32_nimble::BLEDevice;
 use esp_idf_svc::{
     hal::{gpio::IOPin, peripherals::Peripherals, task},
     timer::{EspAsyncTimer, EspTaskTimerService},
@@ -16,9 +13,9 @@ mod ble;
 mod hid;
 pub mod input;
 pub mod key;
-mod keycode;
-// mod kontroller;
 mod led;
+#[allow(clippy::pedantic)]
+mod proto;
 
 use futures::channel::mpsc::channel;
 use led::Led;
@@ -35,7 +32,6 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = Peripherals::take()?;
     let timer_svc = EspTaskTimerService::new()?;
-    let ble_device = BLEDevice::take();
 
     let led_blinker =
         led::Blinker::new(Led::new(peripherals.pins.gpio7)?, timer_svc.timer_async()?);
@@ -57,7 +53,7 @@ fn main() -> anyhow::Result<()> {
 
     let (report_tx, report_rx) = channel::<hid::Report>(8);
 
-    let mut led_blinker_timer = timer_svc.timer_async()?;
+    let led_blinker_timer = timer_svc.timer_async()?;
     let mut ble_server_timer = timer_svc.timer_async()?;
     let mut input_reporter_timer = timer_svc.timer_async()?;
 
@@ -65,7 +61,7 @@ fn main() -> anyhow::Result<()> {
 
     task::block_on(async {
         futures::try_join!(
-            handle_led_status(led_blinker_timer, &led_blinker),
+            handle_led_status(led_blinker_timer, led_blinker),
             input_reporter.start(Instant::now, &mut input_reporter_timer, report_tx),
             ble_server.start(&mut ble_server_timer, report_rx),
         )
@@ -74,9 +70,9 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn handle_led_status<'d>(
+async fn handle_led_status(
     mut timer: EspAsyncTimer,
-    led_blinker: &led::Blinker<'d>,
+    mut led_blinker: led::Blinker<'_>,
 ) -> anyhow::Result<()> {
     let timer: &mut EspAsyncTimer = timer.every(Duration::from_millis(500))?;
 

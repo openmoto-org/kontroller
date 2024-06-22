@@ -41,6 +41,7 @@
             packages = [
               nil
               nixpkgs-fmt
+              buf
             ];
 
             buildInputs = [

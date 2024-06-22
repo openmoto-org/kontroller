@@ -56,6 +56,7 @@ usbd-hid = { version = "0.7.0", features = ["defmt"] }
 defmt = "0.3.8"
 ssmarshal = "1.0.0"
 num_enum = "0.7.2"
+prost = "0.12.6"
 
 [build-dependencies]
 embuild = "0.31.3"
