@@ -42,6 +42,7 @@
               nil
               nixpkgs-fmt
               buf
+              bun
             ];
 
             buildInputs = [

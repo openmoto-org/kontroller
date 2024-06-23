@@ -3,6 +3,7 @@
     "mkhl.direnv",
     "jnoortheen.nix-ide",
     "rust-lang.rust-analyzer",
-    "wokwi.wokwi-vscode"
+    "wokwi.wokwi-vscode",
+    "oven.bun-vscode"
   ]
 }
