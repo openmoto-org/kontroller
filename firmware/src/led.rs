@@ -1,9 +1,9 @@
-use std::{ops::Deref, time::Duration};
+use std::ops::Deref;
 
+use embassy_time::{Duration, Timer};
 use esp_idf_svc::{
     hal::gpio::{AnyIOPin, InputOutput, PinDriver},
     sys::EspError,
-    timer::EspAsyncTimer,
 };
 
 pub struct Led<'d> {
@@ -48,7 +48,6 @@ impl Default for DriverConfig {
 
 pub struct Blinker<'d> {
     led: Led<'d>,
-    timer: EspAsyncTimer,
     config: DriverConfig,
 }
 
@@ -60,13 +59,15 @@ impl<'d> Deref for Blinker<'d> {
     }
 }
 
-impl<'d> Blinker<'d> {
-    pub fn new(led: Led<'d>, timer: EspAsyncTimer) -> Self {
-        Self::new_with_config(led, timer, DriverConfig::default())
+impl<'d> From<Led<'d>> for Blinker<'d> {
+    fn from(led: Led<'d>) -> Self {
+        Self::new(led, DriverConfig::default())
     }
+}
 
-    pub fn new_with_config(led: Led<'d>, timer: EspAsyncTimer, config: DriverConfig) -> Self {
-        Self { led, timer, config }
+impl<'d> Blinker<'d> {
+    pub fn new(led: Led<'d>, config: DriverConfig) -> Self {
+        Self { led, config }
     }
 
     pub async fn short_blink(&mut self) -> Result<(), EspError> {
@@ -79,9 +80,11 @@ impl<'d> Blinker<'d> {
 
     pub async fn blink(&mut self, d: Duration) -> Result<(), EspError> {
         self.led.on().await?;
-        self.timer.after(d).await?;
+        Timer::after(d).await;
 
         self.led.off().await?;
-        self.timer.after(d).await
+        Timer::after(d).await;
+
+        Ok(())
     }
 }

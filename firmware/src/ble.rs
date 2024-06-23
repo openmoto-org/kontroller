@@ -1,15 +1,12 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
+use embassy_time::{Duration, Timer};
 use esp32_nimble::{
     enums::{AuthReq, SecurityIOCap},
     utilities::mutex::Mutex,
     BLEAdvertisementData, BLECharacteristic, BLEDevice, BLEError, BLEHIDDevice, BLEServer,
 };
-use esp_idf_svc::{
-    hal::{delay, timer::Timer},
-    sys::EspError,
-    timer::EspAsyncTimer,
-};
+use esp_idf_svc::{hal::delay, timer::EspAsyncTimer};
 use futures::{channel::mpsc::Receiver, StreamExt};
 use log::{info, warn};
 use usbd_hid::descriptor::SerializedDescriptor;
@@ -85,28 +82,23 @@ impl Server {
         })
     }
 
-    pub async fn start(
-        &mut self,
-        timer: &mut EspAsyncTimer,
-        mut rx: Receiver<hid::Report>,
-    ) -> anyhow::Result<()> {
+    pub async fn start(&mut self, mut rx: Receiver<hid::Report>) -> anyhow::Result<()> {
         loop {
             self.device.get_advertising().lock().start()?;
-
-            self.wait_for_connection(timer).await?;
-
+            self.wait_for_connection().await?;
             self.device.get_advertising().lock().stop()?;
 
             futures::try_join!(
                 self.listen_for_reports(&mut rx),
-                self.wait_for_disconnection(timer)
+                self.wait_for_disconnection()
             )?;
         }
     }
 
-    async fn wait_for_connection(&self, timer: &mut EspAsyncTimer) -> anyhow::Result<()> {
+    async fn wait_for_connection(&self) -> anyhow::Result<()> {
         loop {
-            timer.after(Duration::from_millis(100)).await?;
+            // TODO(ar3s3ru): do not hardcode
+            Timer::after(Duration::from_millis(100)).await;
             if self.server.connected_count() > 0 {
                 return Ok(());
             }
@@ -122,9 +114,10 @@ impl Server {
         Ok(())
     }
 
-    async fn wait_for_disconnection(&self, timer: &mut EspAsyncTimer) -> anyhow::Result<()> {
+    async fn wait_for_disconnection(&self) -> anyhow::Result<()> {
         loop {
-            timer.after(Duration::from_millis(500)).await?;
+            // TODO(ar3s3ru): do not hardcode
+            Timer::after(Duration::from_millis(500)).await;
             if self.server.connected_count() == 0 {
                 return Ok(());
             }

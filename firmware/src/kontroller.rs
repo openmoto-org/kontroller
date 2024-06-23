@@ -1,11 +1,9 @@
 //! Abstractions to build a controller layout.
 
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::collections::HashMap;
 
-use esp_idf_svc::{hal::gpio::AnyIOPin, sys::EspError, timer::EspAsyncTimer};
+use embassy_time::{Duration, Instant, Timer};
+use esp_idf_svc::{hal::gpio::AnyIOPin, sys::EspError};
 use futures::{channel::mpsc::Sender, SinkExt};
 
 use crate::{
@@ -60,7 +58,6 @@ impl<'d> Reporter<'d> {
     pub async fn start<Clk>(
         &mut self,
         clock: Clk,
-        timer: &mut EspAsyncTimer,
         mut tx: Sender<hid::Report>,
     ) -> anyhow::Result<()>
     where
@@ -68,7 +65,7 @@ impl<'d> Reporter<'d> {
     {
         loop {
             // TODO(ar3s3ru): inject this value through some configuration.
-            timer.after(Duration::from_micros(100)).await?;
+            Timer::after(Duration::from_micros(100)).await;
 
             let pressed_keys = self.report_pressed_keys(clock());
             if pressed_keys.is_empty() {

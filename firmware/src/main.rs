@@ -2,8 +2,7 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
-use std::time::{Duration, Instant};
-
+use embassy_time::{Duration, Instant, Timer};
 use esp_idf_svc::{
     hal::{gpio::IOPin, peripherals::Peripherals, task},
     timer::{EspAsyncTimer, EspTaskTimerService},
@@ -11,8 +10,8 @@ use esp_idf_svc::{
 
 mod ble;
 mod hid;
-pub mod input;
 pub mod key;
+mod kontroller;
 mod led;
 #[allow(clippy::pedantic)]
 mod proto;
@@ -31,20 +30,18 @@ fn main() -> anyhow::Result<()> {
     log::debug!("Initializing peripherals...");
 
     let peripherals = Peripherals::take()?;
-    let timer_svc = EspTaskTimerService::new()?;
 
-    let led_blinker =
-        led::Blinker::new(Led::new(peripherals.pins.gpio7)?, timer_svc.timer_async()?);
+    let led_blinker = led::Blinker::from(Led::new(peripherals.pins.gpio7)?);
 
-    let mut input_reporter = input::Reporter::new([
-        (input::Key::Enter, peripherals.pins.gpio8.downgrade()),
-        (input::Key::Up, peripherals.pins.gpio9.downgrade()),
-        (input::Key::Right, peripherals.pins.gpio10.downgrade()),
-        (input::Key::Left, peripherals.pins.gpio11.downgrade()),
-        (input::Key::Down, peripherals.pins.gpio12.downgrade()),
-        (input::Key::Fn1, peripherals.pins.gpio4.downgrade()),
-        (input::Key::Fn2, peripherals.pins.gpio5.downgrade()),
-        (input::Key::Fn3, peripherals.pins.gpio6.downgrade()),
+    let mut input_reporter = kontroller::Reporter::new([
+        (kontroller::Key::Enter, peripherals.pins.gpio8.downgrade()),
+        (kontroller::Key::Up, peripherals.pins.gpio9.downgrade()),
+        (kontroller::Key::Right, peripherals.pins.gpio10.downgrade()),
+        (kontroller::Key::Left, peripherals.pins.gpio11.downgrade()),
+        (kontroller::Key::Down, peripherals.pins.gpio12.downgrade()),
+        (kontroller::Key::Fn1, peripherals.pins.gpio4.downgrade()),
+        (kontroller::Key::Fn2, peripherals.pins.gpio5.downgrade()),
+        (kontroller::Key::Fn3, peripherals.pins.gpio6.downgrade()),
     ])?;
 
     let mut ble_server = ble::Server::new(&ble::Config {
@@ -53,31 +50,22 @@ fn main() -> anyhow::Result<()> {
 
     let (report_tx, report_rx) = channel::<hid::Report>(8);
 
-    let led_blinker_timer = timer_svc.timer_async()?;
-    let mut ble_server_timer = timer_svc.timer_async()?;
-    let mut input_reporter_timer = timer_svc.timer_async()?;
-
     log::debug!("Peripherals fully initialized");
 
     task::block_on(async {
         futures::try_join!(
-            handle_led_status(led_blinker_timer, led_blinker),
-            input_reporter.start(Instant::now, &mut input_reporter_timer, report_tx),
-            ble_server.start(&mut ble_server_timer, report_rx),
+            handle_led_status(led_blinker),
+            input_reporter.start(Instant::now, report_tx),
+            ble_server.start(report_rx),
         )
     })?;
 
     Ok(())
 }
 
-async fn handle_led_status(
-    mut timer: EspAsyncTimer,
-    mut led_blinker: led::Blinker<'_>,
-) -> anyhow::Result<()> {
-    let timer: &mut EspAsyncTimer = timer.every(Duration::from_millis(500))?;
-
+async fn handle_led_status(mut led_blinker: led::Blinker<'_>) -> anyhow::Result<()> {
     loop {
-        timer.tick().await?;
+        Timer::after(Duration::from_millis(500)).await;
         led_blinker.long_blink().await?;
     }
 }

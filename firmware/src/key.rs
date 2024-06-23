@@ -1,7 +1,6 @@
 //! Module containing logical abstraction for a physical, debounced [`Key`].
 
-use std::time::{Duration, Instant};
-
+use embassy_time::{Duration, Instant};
 use esp_idf_svc::{
     hal::gpio::{AnyIOPin, Input, PinDriver, Pull},
     sys::EspError,
