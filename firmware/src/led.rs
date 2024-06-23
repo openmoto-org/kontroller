@@ -17,14 +17,18 @@ impl<'d> Led<'d> {
         })
     }
 
-    pub async fn on(&mut self) -> Result<(), EspError> {
+    pub async fn on(&mut self) -> anyhow::Result<()> {
         self.pin.set_high()?;
-        self.pin.wait_for_high().await
+        self.pin.wait_for_high().await?;
+
+        Ok(())
     }
 
-    pub async fn off(&mut self) -> Result<(), EspError> {
+    pub async fn off(&mut self) -> anyhow::Result<()> {
         self.pin.set_low()?;
-        self.pin.wait_for_low().await
+        self.pin.wait_for_low().await?;
+
+        Ok(())
     }
 }
 
@@ -70,15 +74,17 @@ impl<'d> Blinker<'d> {
         Self { led, config }
     }
 
-    pub async fn short_blink(&mut self) -> Result<(), EspError> {
+    #[allow(dead_code)]
+    pub async fn short_blink(&mut self) -> anyhow::Result<()> {
         self.blink(self.config.short_blink_duration).await
     }
 
-    pub async fn long_blink(&mut self) -> Result<(), EspError> {
+    #[allow(dead_code)]
+    pub async fn long_blink(&mut self) -> anyhow::Result<()> {
         self.blink(self.config.long_blink_duration).await
     }
 
-    pub async fn blink(&mut self, d: Duration) -> Result<(), EspError> {
+    pub async fn blink(&mut self, d: Duration) -> anyhow::Result<()> {
         self.led.on().await?;
         Timer::after(d).await;
 

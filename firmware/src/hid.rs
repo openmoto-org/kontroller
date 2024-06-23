@@ -1,4 +1,5 @@
-/// HID Descriptor used in BLE keyboard, which might be different from USB HID device.
+//! HID utilities and implementations, such as report types, descriptors, etc.
+
 use usbd_hid::descriptor::generator_prelude::*;
 
 // Source: <https://developer.nordicsemi.com/nRF5_SDK/nRF51_SDK_v4.x.x/doc/html/group___b_l_e___a_p_p_e_a_r_a_n_c_e_s.html#gac08ceb7b199eceefc4650399a3a7ff75>
@@ -6,18 +7,6 @@ pub const BLE_APPEARANCE_KEYBOARD: u16 = 0x03c1;
 // Source: <https://the-sz.com/products/usbid/index.php?v=0x05AC&p=0x820A>
 pub const APPLE_INC_VENDOR_ID: u16 = 0x05ac;
 pub const APPLE_BLUETOOTH_HID_KEYBOARD_PRODUCT_ID: u16 = 0x820a;
-
-/// Predefined report ids for composite BLE hid report. The report id of BLE should start from 0x01
-/// Should be same with `#[gen_hid_descriptor]`
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ReportType {
-    Keyboard = 0x01,
-    Mouse = 0x02,
-    Media = 0x03,
-    System = 0x04,
-    Vial = 0x05,
-}
 
 /// KeyboardReport describes a report and its companion descriptor that can be
 /// used to send keyboard button presses to a host and receive the status of the
@@ -77,16 +66,6 @@ pub enum ReportType {
                 #[item_settings data,array,absolute,not_null] system_usage_id=input;
             };
         };
-    },
-    (collection = APPLICATION, usage_page = 0xFF60, usage = 0x61) = {
-        (report_id = 0x05,) = {
-            (usage = 0x62, logical_min = 0x0) = {
-                #[item_settings data,variable,absolute] vial_input_data=input;
-            };
-            (usage = 0x63, logical_min = 0x0) = {
-                #[item_settings data,variable,absolute] vial_output_data=output;
-            };
-        };
     }
 )]
 #[allow(dead_code)]
@@ -103,6 +82,4 @@ pub struct Report {
     pub pan: i8,   // Scroll left (negative) or right (positive) this many units
     pub media_usage_id: u16,
     pub system_usage_id: u8,
-    pub vial_input_data: [u8; 32],
-    pub vial_output_data: [u8; 32],
 }

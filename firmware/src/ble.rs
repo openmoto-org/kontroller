@@ -6,15 +6,13 @@ use esp32_nimble::{
     utilities::mutex::Mutex,
     BLEAdvertisementData, BLECharacteristic, BLEDevice, BLEError, BLEHIDDevice, BLEServer,
 };
-use esp_idf_svc::{hal::delay, timer::EspAsyncTimer};
-use futures::{channel::mpsc::Receiver, StreamExt};
+use futures::{channel::mpsc::Receiver, future::Either, StreamExt, TryFutureExt};
 use log::{info, warn};
 use usbd_hid::descriptor::SerializedDescriptor;
 
-use crate::hid;
+use crate::{hid, led, proto::kontroller::hid::v1::ReportType};
 
 pub type HidWriter = Arc<Mutex<BLECharacteristic>>;
-pub type HidReader = Arc<Mutex<BLECharacteristic>>;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -29,7 +27,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(config: &Config) -> Result<Self, BLEError> {
+    pub fn initialize(config: &Config) -> Result<Self, BLEError> {
         BLEDevice::set_device_name(config.device_name)?;
 
         let device = BLEDevice::take();
@@ -51,9 +49,23 @@ impl Server {
             Err(err) => warn!("connection aborted, cause: (code: {} {err}", err.code()),
         });
 
+        let input_keyboard = Self::initialize_hid_keyboard(device, server, config)?;
+
+        Ok(Self {
+            device,
+            server,
+            input_keyboard,
+        })
+    }
+
+    fn initialize_hid_keyboard(
+        device: &mut BLEDevice,
+        server: &mut BLEServer,
+        config: &Config,
+    ) -> Result<HidWriter, BLEError> {
         let mut hid_device = BLEHIDDevice::new(server);
 
-        let input_keyboard = hid_device.input_report(hid::ReportType::Keyboard as u8);
+        let input_keyboard = hid_device.input_report(ReportType::Keyboard as u8);
 
         hid_device.manufacturer("test");
         hid_device.pnp(
@@ -75,23 +87,48 @@ impl Server {
                 .add_service_uuid(hid_device.hid_service().lock().uuid()),
         )?;
 
-        Ok(Self {
-            device,
-            server,
-            input_keyboard,
-        })
+        Ok(input_keyboard)
     }
 
-    pub async fn start(&mut self, mut rx: Receiver<hid::Report>) -> anyhow::Result<()> {
+    pub async fn start(
+        &mut self,
+        mut rx: Receiver<hid::Report>,
+        led: &mut led::Blinker<'_>,
+    ) -> anyhow::Result<()> {
         loop {
+            info!("advertising started");
+
             self.device.get_advertising().lock().start()?;
-            self.wait_for_connection().await?;
+
+            let wait_for_connection = Box::pin(self.wait_for_connection());
+            let quickly_blink_led = Box::pin(Self::quickly_blink_led(led));
+
+            futures::future::try_select(wait_for_connection, quickly_blink_led)
+                .await
+                .map_err(|err| match err {
+                    Either::Right((err, _)) | Either::Left((err, _)) => err,
+                })?;
+
             self.device.get_advertising().lock().stop()?;
 
-            futures::try_join!(
-                self.listen_for_reports(&mut rx),
-                self.wait_for_disconnection()
-            )?;
+            info!("advertising stopped");
+
+            let listen_hid_reports = Box::pin(self.listen_for_reports(&mut rx, led));
+            let wait_for_disconnection = Box::pin(self.wait_for_disconnection());
+
+            futures::future::try_select(listen_hid_reports, wait_for_disconnection)
+                .await
+                .map_err(|err| match err {
+                    Either::Right((err, _)) | Either::Left((err, _)) => err,
+                })?;
+        }
+    }
+
+    async fn quickly_blink_led(led: &mut led::Blinker<'_>) -> anyhow::Result<()> {
+        loop {
+            led.short_blink().await?;
+            // TODO(ar3s3ru): do not hardcode.
+            Timer::after(Duration::from_millis(100)).await;
         }
     }
 
@@ -105,10 +142,18 @@ impl Server {
         }
     }
 
-    async fn listen_for_reports(&self, rx: &mut Receiver<hid::Report>) -> anyhow::Result<()> {
+    async fn listen_for_reports(
+        &self,
+        rx: &mut Receiver<hid::Report>,
+        led: &mut led::Blinker<'_>,
+    ) -> anyhow::Result<()> {
         while let Some(report) = rx.next().await {
             info!("report received: {report:?}");
-            self.send_report(&report);
+
+            futures::try_join!(
+                self.send_report(&report),
+                led.short_blink().map_err(anyhow::Error::from)
+            )?;
         }
 
         Ok(())
@@ -124,8 +169,10 @@ impl Server {
         }
     }
 
-    fn send_report<T: Sized>(&self, report: &T) {
+    async fn send_report<T: Sized>(&self, report: &T) -> anyhow::Result<()> {
         self.input_keyboard.lock().set_from(report).notify();
-        delay::Ets::delay_ms(7);
+        Timer::after(Duration::from_millis(7)).await;
+
+        Ok(())
     }
 }

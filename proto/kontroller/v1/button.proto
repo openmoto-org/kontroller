@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package kontroller.v1;
+
+// A Kontroller button, in the form of an harware key.
+enum Button {
+  // Default value, must not be used.
+  BUTTON_UNSPECIFIED = 0;
+  // The directional pad up button.
+  BUTTON_UP = 1;
+  // The directional pad down button.
+  BUTTON_DOWN = 2;
+  // The directional pad left button.
+  BUTTON_LEFT = 3;
+  // The directional pad right button.
+  BUTTON_RIGHT = 4;
+  // The directional pad enter button.
+  BUTTON_ENTER = 5;
+  // The first function button.
+  BUTTON_FN1 = 6;
+  // The second function button.
+  BUTTON_FN2 = 7;
+  // The third function button.
+  BUTTON_FN3 = 8;
+}

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package kontroller.hid.v1;
+
+// Predefined report ids for composite BLE hid report.
+// The report id of BLE should start from 0x01.
+enum ReportType {
+  // Default value, should not be used.
+  REPORT_TYPE_UNSPECIFIED = 0x00;
+  // Report for the HID keyboard device.
+  REPORT_TYPE_KEYBOARD = 0x01;
+  // Report for the HID mouse device.
+  REPORT_TYPE_MOUSE = 0x02;
+  // Report for the HID media device.
+  REPORT_TYPE_MEDIA = 0x03;
+  // Report for the HID system device.
+  REPORT_TYPE_SYSTEM = 0x04;
+}

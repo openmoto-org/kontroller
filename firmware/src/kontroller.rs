@@ -9,33 +9,12 @@ use futures::{channel::mpsc::Sender, SinkExt};
 use crate::{
     hid,
     key::{self, Key as HwKey},
-    proto::kontroller::hid::v1::KeyCode,
+    proto::kontroller::{hid::v1::KeyCode, v1::Button},
 };
-
-/// The type of a single key in the Layout.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Key {
-    /// Up button key from the directional pad.
-    Up,
-    /// Down button key from the directional pad.
-    Down,
-    /// Left button key from the directional pad.
-    Left,
-    /// Right button key from the directional pad.
-    Right,
-    /// The enter key.
-    Enter,
-    /// The first function key.
-    Fn1,
-    /// The second function key.
-    Fn2,
-    /// The third function key.
-    Fn3,
-}
 
 /// Represents the layout of the Controller.
 pub struct Reporter<'d> {
-    keys: HashMap<Key, HwKey<'d>>,
+    keys: HashMap<Button, HwKey<'d>>,
 }
 
 impl<'d> Reporter<'d> {
@@ -43,13 +22,13 @@ impl<'d> Reporter<'d> {
     ///
     /// # Errors
     pub fn new(
-        keys: impl IntoIterator<Item = (Key, impl Into<AnyIOPin>)>,
+        keys: impl IntoIterator<Item = (Button, impl Into<AnyIOPin>)>,
     ) -> Result<Self, EspError> {
         Ok(Self {
             keys: keys
                 .into_iter()
                 .map(|(key_type, pin)| Ok((key_type, HwKey::try_from(pin)?)))
-                .collect::<Result<HashMap<Key, HwKey<'d>>, EspError>>()?,
+                .collect::<Result<HashMap<Button, HwKey<'d>>, EspError>>()?,
         })
     }
 
@@ -76,15 +55,15 @@ impl<'d> Reporter<'d> {
 
             for (i, evt) in pressed_keys.iter().enumerate() {
                 report.keycodes[i] = match evt {
-                    (_, key::Event::Up) => 0x00,
-                    (Key::Up, key::Event::Down) => KeyCode::Up as u8,
-                    (Key::Down, key::Event::Down) => KeyCode::Down as u8,
-                    (Key::Left, key::Event::Down) => KeyCode::Left as u8,
-                    (Key::Right, key::Event::Down) => KeyCode::Right as u8,
-                    (Key::Enter, key::Event::Down) => KeyCode::Enter as u8,
-                    (Key::Fn1, key::Event::Down) => KeyCode::F7 as u8,
-                    (Key::Fn2, key::Event::Down) => KeyCode::F6 as u8,
-                    (Key::Fn3, key::Event::Down) => KeyCode::F5 as u8,
+                    (_, key::Event::Up) | (Button::Unspecified, _) => KeyCode::Unspecified as u8,
+                    (Button::Up, key::Event::Down) => KeyCode::Up as u8,
+                    (Button::Down, key::Event::Down) => KeyCode::Down as u8,
+                    (Button::Left, key::Event::Down) => KeyCode::Left as u8,
+                    (Button::Right, key::Event::Down) => KeyCode::Right as u8,
+                    (Button::Enter, key::Event::Down) => KeyCode::Enter as u8,
+                    (Button::Fn1, key::Event::Down) => KeyCode::F7 as u8,
+                    (Button::Fn2, key::Event::Down) => KeyCode::F6 as u8,
+                    (Button::Fn3, key::Event::Down) => KeyCode::F5 as u8,
                 };
             }
 
@@ -97,7 +76,7 @@ impl<'d> Reporter<'d> {
     /// # Errors
     ///
     /// # Panics
-    pub fn report_pressed_keys(&mut self, now: Instant) -> Vec<(Key, key::Event)> {
+    pub fn report_pressed_keys(&mut self, now: Instant) -> Vec<(Button, key::Event)> {
         self.keys
             .iter_mut()
             .map(|(kt, key)| (kt, key.update(now)))

@@ -689,4 +689,46 @@ impl KeyCode {
         }
     }
 }
+/// Predefined report ids for composite BLE hid report.
+/// The report id of BLE should start from 0x01.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ReportType {
+    /// Default value, should not be used.
+    Unspecified = 0,
+    /// Report for the HID keyboard device.
+    Keyboard = 1,
+    /// Report for the HID mouse device.
+    Mouse = 2,
+    /// Report for the HID media device.
+    Media = 3,
+    /// Report for the HID system device.
+    System = 4,
+}
+impl ReportType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            ReportType::Unspecified => "REPORT_TYPE_UNSPECIFIED",
+            ReportType::Keyboard => "REPORT_TYPE_KEYBOARD",
+            ReportType::Mouse => "REPORT_TYPE_MOUSE",
+            ReportType::Media => "REPORT_TYPE_MEDIA",
+            ReportType::System => "REPORT_TYPE_SYSTEM",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "REPORT_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "REPORT_TYPE_KEYBOARD" => Some(Self::Keyboard),
+            "REPORT_TYPE_MOUSE" => Some(Self::Mouse),
+            "REPORT_TYPE_MEDIA" => Some(Self::Media),
+            "REPORT_TYPE_SYSTEM" => Some(Self::System),
+            _ => None,
+        }
+    }
+}
 // @@protoc_insertion_point(module)

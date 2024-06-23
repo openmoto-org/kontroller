@@ -2,11 +2,8 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
-use embassy_time::{Duration, Instant, Timer};
-use esp_idf_svc::{
-    hal::{gpio::IOPin, peripherals::Peripherals, task},
-    timer::{EspAsyncTimer, EspTaskTimerService},
-};
+use embassy_time::Instant;
+use esp_idf_svc::hal::{gpio::IOPin, peripherals::Peripherals, task};
 
 mod ble;
 mod hid;
@@ -18,6 +15,7 @@ mod proto;
 
 use futures::channel::mpsc::channel;
 use led::Led;
+use proto::kontroller::v1::Button;
 
 fn main() -> anyhow::Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -31,20 +29,20 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = Peripherals::take()?;
 
-    let led_blinker = led::Blinker::from(Led::new(peripherals.pins.gpio7)?);
+    let mut led_blinker = led::Blinker::from(Led::new(peripherals.pins.gpio7)?);
 
     let mut input_reporter = kontroller::Reporter::new([
-        (kontroller::Key::Enter, peripherals.pins.gpio8.downgrade()),
-        (kontroller::Key::Up, peripherals.pins.gpio9.downgrade()),
-        (kontroller::Key::Right, peripherals.pins.gpio10.downgrade()),
-        (kontroller::Key::Left, peripherals.pins.gpio11.downgrade()),
-        (kontroller::Key::Down, peripherals.pins.gpio12.downgrade()),
-        (kontroller::Key::Fn1, peripherals.pins.gpio4.downgrade()),
-        (kontroller::Key::Fn2, peripherals.pins.gpio5.downgrade()),
-        (kontroller::Key::Fn3, peripherals.pins.gpio6.downgrade()),
+        (Button::Enter, peripherals.pins.gpio8.downgrade()),
+        (Button::Up, peripherals.pins.gpio9.downgrade()),
+        (Button::Right, peripherals.pins.gpio10.downgrade()),
+        (Button::Left, peripherals.pins.gpio11.downgrade()),
+        (Button::Down, peripherals.pins.gpio12.downgrade()),
+        (Button::Fn1, peripherals.pins.gpio4.downgrade()),
+        (Button::Fn2, peripherals.pins.gpio5.downgrade()),
+        (Button::Fn3, peripherals.pins.gpio6.downgrade()),
     ])?;
 
-    let mut ble_server = ble::Server::new(&ble::Config {
+    let mut ble_server = ble::Server::initialize(&ble::Config {
         device_name: "DMD CTL 8K",
     })?;
 
@@ -54,18 +52,10 @@ fn main() -> anyhow::Result<()> {
 
     task::block_on(async {
         futures::try_join!(
-            handle_led_status(led_blinker),
             input_reporter.start(Instant::now, report_tx),
-            ble_server.start(report_rx),
+            ble_server.start(report_rx, &mut led_blinker),
         )
     })?;
 
     Ok(())
-}
-
-async fn handle_led_status(mut led_blinker: led::Blinker<'_>) -> anyhow::Result<()> {
-    loop {
-        Timer::after(Duration::from_millis(500)).await;
-        led_blinker.long_blink().await?;
-    }
 }
