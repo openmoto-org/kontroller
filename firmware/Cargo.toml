@@ -56,6 +56,7 @@ futures = "0.3.30"
 log = { version = "0.4", default-features = false }
 num_enum = "0.7.2"
 prost = "0.12.6"
+prost-types = "0.12.6"
 ssmarshal = "1.0.0"
 usbd-hid = { version = "0.7.0", features = ["defmt"] }
 

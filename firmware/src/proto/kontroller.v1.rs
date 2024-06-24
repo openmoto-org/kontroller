@@ -56,4 +56,40 @@ impl Button {
         }
     }
 }
+/// A keymap for the Kontroller, i.e. the list of which HID keycode to apply
+/// to a specific physical button press.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Keymap {
+    /// All the keymap entries.
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<keymap::Entry>,
+}
+/// Nested message and enum types in `Keymap`.
+pub mod keymap {
+    /// A keymap entry, i.e. the association between one Button and a KeyCode.
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Entry {
+        /// The physical Button.
+        #[prost(enumeration = "super::Button", tag = "1")]
+        pub button: i32,
+        /// The key code to apply to the physical Button.
+        #[prost(enumeration = "super::super::hid::v1::KeyCode", tag = "2")]
+        pub key_code: i32,
+    }
+}
+/// A Kontroller configuration.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Konfiguration {
+    /// The interval between each polling call for hardware buttons state.
+    /// Expressed in microseconds.
+    #[prost(uint64, tag = "1")]
+    pub buttons_poll_interval_micros: u64,
+    /// The keymap for the Kontroller, i.e. which HID keycodes to apply
+    /// to a physical Button press.
+    #[prost(message, optional, tag = "2")]
+    pub keymap: ::core::option::Option<Keymap>,
+}
 // @@protoc_insertion_point(module)

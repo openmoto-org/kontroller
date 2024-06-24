@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package kontroller.v1;
+
+import "kontroller/v1/keymap.proto";
+
+// A Kontroller configuration.
+message Konfiguration {
+  // The interval between each polling call for hardware buttons state.
+  // Expressed in microseconds.
+  uint64 buttons_poll_interval_micros = 1;
+
+  // The keymap for the Kontroller, i.e. which HID keycodes to apply
+  // to a physical Button press.
+  kontroller.v1.Keymap keymap = 2;
+}

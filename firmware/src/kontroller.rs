@@ -9,22 +9,40 @@ use futures::{channel::mpsc::Sender, SinkExt};
 use crate::{
     hid,
     key::{self, Key as HwKey},
-    proto::kontroller::{hid::v1::KeyCode, v1::Button},
+    proto::kontroller::{
+        hid::v1::KeyCode,
+        v1::{keymap::Entry, Button, Keymap, Konfiguration},
+    },
 };
 
-/// Represents the layout of the Controller.
-pub struct Reporter<'d> {
-    keys: HashMap<Button, HwKey<'d>>,
+pub fn make_keymap(it: impl IntoIterator<Item = (Button, KeyCode)>) -> Keymap {
+    Keymap {
+        entries: it
+            .into_iter()
+            .map(|(button, key_code)| Entry {
+                button: button.into(),
+                key_code: key_code.into(),
+            })
+            .collect(),
+    }
 }
 
-impl<'d> Reporter<'d> {
+/// Represents the layout of the Controller.
+pub struct Kontroller<'d> {
+    keys: HashMap<Button, HwKey<'d>>,
+    config: Konfiguration,
+}
+
+impl<'d> Kontroller<'d> {
     /// TODO
     ///
     /// # Errors
     pub fn new(
         keys: impl IntoIterator<Item = (Button, impl Into<AnyIOPin>)>,
+        config: Konfiguration,
     ) -> Result<Self, EspError> {
         Ok(Self {
+            config,
             keys: keys
                 .into_iter()
                 .map(|(key_type, pin)| Ok((key_type, HwKey::try_from(pin)?)))
@@ -43,8 +61,10 @@ impl<'d> Reporter<'d> {
         Clk: Fn() -> Instant,
     {
         loop {
-            // TODO(ar3s3ru): inject this value through some configuration.
-            Timer::after(Duration::from_micros(100)).await;
+            Timer::after(Duration::from_micros(
+                self.config.buttons_poll_interval_micros,
+            ))
+            .await;
 
             let pressed_keys = self.report_pressed_keys(clock());
             if pressed_keys.is_empty() {
@@ -56,15 +76,19 @@ impl<'d> Reporter<'d> {
             for (i, evt) in pressed_keys.iter().enumerate() {
                 report.keycodes[i] = match evt {
                     (_, key::Event::Up) | (Button::Unspecified, _) => KeyCode::Unspecified as u8,
-                    (Button::Up, key::Event::Down) => KeyCode::Up as u8,
-                    (Button::Down, key::Event::Down) => KeyCode::Down as u8,
-                    (Button::Left, key::Event::Down) => KeyCode::Left as u8,
-                    (Button::Right, key::Event::Down) => KeyCode::Right as u8,
-                    (Button::Enter, key::Event::Down) => KeyCode::Enter as u8,
-                    (Button::Fn1, key::Event::Down) => KeyCode::F7 as u8,
-                    (Button::Fn2, key::Event::Down) => KeyCode::F6 as u8,
-                    (Button::Fn3, key::Event::Down) => KeyCode::F5 as u8,
-                };
+                    (button, key::Event::Down) => self
+                        .config
+                        .keymap
+                        .as_ref()
+                        .and_then(|keymap| {
+                            keymap
+                                .entries
+                                .iter()
+                                .find(|entry| entry.button() == *button)
+                        })
+                        .map_or(KeyCode::Unspecified, Entry::key_code)
+                        as u8,
+                }
             }
 
             tx.send(report).await?;

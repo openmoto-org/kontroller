@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package kontroller.v1;
+
+import "kontroller/hid/v1/key_code.proto";
+import "kontroller/v1/button.proto";
+
+// A keymap for the Kontroller, i.e. the list of which HID keycode to apply
+// to a specific physical button press.
+message Keymap {
+  // A keymap entry, i.e. the association between one Button and a KeyCode.
+  message Entry {
+    // The physical Button.
+    kontroller.v1.Button button = 1;
+    // The key code to apply to the physical Button.
+    kontroller.hid.v1.KeyCode key_code = 2;
+  }
+
+  // All the keymap entries.
+  repeated Entry entries = 1;
+}
