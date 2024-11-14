@@ -1,8 +1,11 @@
 { lib
 , stdenv
 , fetchurl
+, zlib
 }:
-
+let
+  rpath = "${zlib}/lib:$out/lib";
+in
 stdenv.mkDerivation rec {
   pname = "rust-src-esp";
   version = "1.78.0.0";
@@ -24,7 +27,7 @@ stdenv.mkDerivation rec {
           if isELF "$file"; then
             patchelf \
               --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-              --set-rpath ${lib.rpath} \
+              --set-rpath ${rpath} \
               "$file" || true
           fi
         done
@@ -33,7 +36,7 @@ stdenv.mkDerivation rec {
       if [ -d $out/lib ]; then
         for file in $(find $out/lib -type f); do
           if isELF "$file"; then
-            patchelf --set-rpath ${lib.rpath} "$file" || true
+            patchelf --set-rpath ${rpath} "$file" || true
           fi
         done
       fi
@@ -43,7 +46,7 @@ stdenv.mkDerivation rec {
           if isELF "$file"; then
             patchelf \
               --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-              --set-rpath ${lib.rpath} \
+              --set-rpath ${rpath} \
               "$file" || true
           fi
         done
@@ -53,7 +56,7 @@ stdenv.mkDerivation rec {
         if isELF "$file"; then
           patchelf \
             --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-            --set-rpath ${stdenv.cc.cc.lib}/lib:${lib.rpath} \
+            --set-rpath ${stdenv.cc.cc.lib}/lib:${rpath} \
             "$file" || true
         fi
       done

@@ -1,6 +1,7 @@
 { lib
 , stdenv
 , fetchurl
+, zlib
 }:
 let
   platform = {
@@ -9,6 +10,8 @@ let
     x86_64-darwin = "x86_64-apple-darwin";
     aarch64-darwin = "aarch64-apple-darwin";
   }.${stdenv.hostPlatform.system} or (throw "unsupported system ${stdenv.hostPlatform.system}");
+
+  rpath = "${zlib}/lib:$out/lib";
 in
 stdenv.mkDerivation rec {
   pname = "rust-esp";
@@ -18,7 +21,7 @@ stdenv.mkDerivation rec {
     url = "https://github.com/esp-rs/rust-build/releases/download/v${version}/rust-${version}-${platform}.tar.xz";
     sha256 = {
       aarch64-linux = lib.fakeSha256;
-      x86_64-linux = lib.fakeSha256;
+      x86_64-linux = "sha256-4GrkKWIqGPcreWa8IZyllhM9qYlQBUoSAo0InSfRukg=";
       x86_64-darwin = lib.fakeSha256;
       aarch64-darwin = "sha256-iWnzDk2wXh0DH6o/a2vEjQgebC8Dkoqo2H0Vsoxwupw=";
     }.${stdenv.hostPlatform.system};
@@ -36,7 +39,7 @@ stdenv.mkDerivation rec {
           if isELF "$file"; then
             patchelf \
               --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-              --set-rpath ${lib.rpath} \
+              --set-rpath ${rpath} \
               "$file" || true
           fi
         done
@@ -45,7 +48,7 @@ stdenv.mkDerivation rec {
       if [ -d $out/lib ]; then
         for file in $(find $out/lib -type f); do
           if isELF "$file"; then
-            patchelf --set-rpath ${lib.rpath} "$file" || true
+            patchelf --set-rpath ${rpath} "$file" || true
           fi
         done
       fi
@@ -55,7 +58,7 @@ stdenv.mkDerivation rec {
           if isELF "$file"; then
             patchelf \
               --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-              --set-rpath ${lib.rpath} \
+              --set-rpath ${rpath} \
               "$file" || true
           fi
         done
@@ -65,7 +68,7 @@ stdenv.mkDerivation rec {
         if isELF "$file"; then
           patchelf \
             --set-interpreter ${stdenv.cc.bintools.dynamicLinker} \
-            --set-rpath ${stdenv.cc.cc.lib}/lib:${lib.rpath} \
+            --set-rpath ${stdenv.cc.cc.lib}/lib:${rpath} \
             "$file" || true
         fi
       done
